@@ -1,0 +1,8 @@
+# Lab-local artifacts we don't want in the repo
+results-*.md
+*.log
+*.pcap
+*.cap
+secrets.env
+.env
+.DS_Store

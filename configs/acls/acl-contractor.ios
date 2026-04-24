@@ -1,0 +1,23 @@
+! =======================================================================
+! acl-contractor.ios
+! -----------------------------------------------------------------------
+! Local fallback ACL for contractor access. Primary enforcement is via
+! a dACL pushed from ISE (ACL-CONTRACTOR-INTERNET-ONLY), but keep a
+! copy on the switch for emergency operation.
+!
+! Allowed: DNS, DHCP, internet, two internal SaaS-style apps.
+! Denied: everything else, including user subnets.
+! =======================================================================
+
+ip access-list extended ACL-CONTRACTOR
+ remark --- Basic network services ---
+ permit udp any any eq bootps
+ permit udp any any eq domain
+ permit udp any eq domain any
+ remark --- Two internal apps that contractors need ---
+ permit tcp any host 10.10.80.50 eq 443
+ permit tcp any host 10.10.80.51 eq 443
+ remark --- Block all access to internal user / infra subnets ---
+ deny   ip any 10.10.0.0 0.0.255.255 log-input
+ remark --- Everything else = internet ---
+ permit ip any any

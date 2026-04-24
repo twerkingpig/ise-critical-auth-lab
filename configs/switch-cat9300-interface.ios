@@ -1,0 +1,38 @@
+! =======================================================================
+! switch-cat9300-interface.ios
+! -----------------------------------------------------------------------
+! Per-port config for identity-based access. Apply as a range to all
+! user-facing access ports.
+! =======================================================================
+
+interface range GigabitEthernet1/0/1 - 48
+ description === User Access ===
+ switchport mode access
+ switchport access vlan 100
+ switchport voice vlan 200
+ switchport nonegotiate
+
+ ! --- Spanning-tree edge settings ---
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+
+ ! --- Dot1X / MAB posture ---
+ access-session host-mode multi-auth
+ access-session closed
+ access-session port-control auto
+ dot1x pae authenticator
+ dot1x timeout tx-period 7
+ dot1x max-reauth-req 2
+ mab
+ authentication periodic
+ authentication timer reauthenticate server
+
+ ! --- Storm control / DHCP snooping sanity ---
+ storm-control broadcast level pps 1k
+ storm-control multicast level pps 1k
+ ip dhcp snooping limit rate 20
+
+ ! --- Apply the IBNS 2.0 policy ---
+ service-policy type control subscriber DOT1X_MAB_POLICY
+!
+end

@@ -1,0 +1,22 @@
+! =======================================================================
+! acl-webauth-redirect.ios
+! -----------------------------------------------------------------------
+! The URL-redirect ACL that ISE references by name (url-redirect-acl).
+!
+! IMPORTANT: "permit" here means "redirect this traffic"; "deny" means
+! "leave this traffic alone." Counterintuitive but standard.
+!
+! This ACL MUST exist on the switch with this exact name or the redirect
+! will silently fail.
+! =======================================================================
+
+ip access-list extended ACL-WEBAUTH-REDIRECT
+ remark --- Do NOT redirect infra traffic ---
+ deny   udp any any eq domain
+ deny   udp any any eq bootps
+ remark --- Do NOT redirect traffic to ISE itself ---
+ deny   ip any host 10.10.50.11
+ deny   ip any host 10.10.50.12
+ remark --- Redirect HTTP/HTTPS everywhere else ---
+ permit tcp any any eq www
+ permit tcp any any eq 443

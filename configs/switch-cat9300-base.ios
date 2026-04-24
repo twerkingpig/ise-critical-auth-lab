@@ -1,0 +1,87 @@
+! =======================================================================
+! switch-cat9300-base.ios
+! -----------------------------------------------------------------------
+! Base AAA / RADIUS / server-state-tracking for a Cat 9300 running
+! IOS-XE 17.x against a Cisco ISE 3.x cluster.
+!
+! Sanitize before paste: IPs, shared secrets, SNMP strings, etc.
+! =======================================================================
+
+!---------------- AAA base ----------------
+aaa new-model
+aaa session-id common
+
+!---------------- RADIUS servers ----------------
+! Two ISE PSNs with active probe (automate-tester) so the switch
+! learns about dead servers BEFORE a real user auth times out.
+!
+! The probe username 'ise-probe' is an Internal User in ISE that has
+! NO authorization rules matching it. It will always receive Access-
+! Reject, which is fine: the RADIUS response itself proves liveness.
+
+radius server ISE-PSN-01
+ address ipv4 10.10.50.11 auth-port 1812 acct-port 1813
+ key 7 REPLACE_WITH_ENCRYPTED_SECRET
+ automate-tester username ise-probe probe-on
+ retransmit 2
+ timeout 5
+
+radius server ISE-PSN-02
+ address ipv4 10.10.50.12 auth-port 1812 acct-port 1813
+ key 7 REPLACE_WITH_ENCRYPTED_SECRET
+ automate-tester username ise-probe probe-on
+ retransmit 2
+ timeout 5
+
+!---------------- Server group + dead detection ----------------
+aaa group server radius ISE-GROUP
+ server name ISE-PSN-01
+ server name ISE-PSN-02
+ deadtime 15
+ ip radius source-interface Vlan100
+
+radius-server dead-criteria time 5 tries 3
+radius-server deadtime 15
+radius-server vsa send authentication
+radius-server vsa send accounting
+radius-server attribute 6 on-for-login-auth
+radius-server attribute 8 include-in-access-req
+radius-server attribute 25 access-request include
+radius-server attribute 31 mac format ietf upper-case
+radius-server attribute 31 send nas-port-detail mac-only
+
+!---------------- Method lists ----------------
+aaa authentication dot1x default group ISE-GROUP
+aaa authorization network default group ISE-GROUP
+aaa authorization auth-proxy default group ISE-GROUP
+aaa accounting dot1x default start-stop group ISE-GROUP
+aaa accounting update newinfo periodic 2880
+aaa accounting network default start-stop group ISE-GROUP
+aaa accounting identity default start-stop group ISE-GROUP
+
+!---------------- CoA (Change of Authorization) ----------------
+aaa server radius dynamic-author
+ client 10.10.50.11 server-key 7 REPLACE_WITH_ENCRYPTED_SECRET
+ client 10.10.50.12 server-key 7 REPLACE_WITH_ENCRYPTED_SECRET
+ auth-type any
+ port 1700
+
+!---------------- Global dot1x / device tracking ----------------
+dot1x system-auth-control
+dot1x critical eapol
+authentication critical recovery delay 2000
+
+ip device tracking probe auto-source
+ip device tracking probe delay 10
+ip device tracking
+
+!---------------- HTTP services for URL redirect ----------------
+ip http server
+ip http secure-server
+ip http active-session-modules none
+ip http secure-active-session-modules none
+
+!---------------- Misc hardening ----------------
+ip ssh version 2
+no ip http secure-server-trustpoint-auto-generate
+service password-encryption

@@ -1,0 +1,20 @@
+! =======================================================================
+! acl-critical-auth.ios
+! -----------------------------------------------------------------------
+! Applied when a fresh session lands in critical-auth state (ISE is
+! unreachable). Keep the user functional for essentials; deny everything
+! else. Tune to your environment.
+! =======================================================================
+
+ip access-list extended ACL-CRITICAL-AUTH
+ remark --- Allow essential infra while ISE is down ---
+ permit udp any any eq bootps
+ permit udp any any eq bootpc
+ permit udp any any eq domain
+ permit udp any eq domain any
+ permit icmp any any
+ remark --- Internal help portal (tells user about the outage) ---
+ permit tcp any host 10.10.20.10 eq 80
+ permit tcp any host 10.10.20.10 eq 443
+ remark --- Default deny with logging for post-mortem ---
+ deny   ip any any log-input
