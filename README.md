@@ -1,4 +1,4 @@
-# ise-critical-auth-lab
+# ise-critical-auth-lab 
 
 > Cisco ISE + IBNS 2.0 lab — real switch & ISE configs for critical-auth segmentation and failure-mode testing on Catalyst 9300.
 
