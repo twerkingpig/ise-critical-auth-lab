@@ -1,0 +1,33 @@
+{#
+  vlans.j2 - VLAN database stanzas
+
+  Expects in context:
+    vlans           : list of dicts with id and name
+    critical_vlans  : dict with data and voice sub-dicts, each with id and name
+    mgmt            : dict with vlan_id (optional)
+
+  NOTE: never put the sequence hash-close-brace inside a Jinja comment.
+  It closes the comment. That includes inline examples in the docstring.
+#}
+!
+! ================================================================
+! VLAN DATABASE - {{ hostname }}
+! ================================================================
+!
+{% if mgmt is defined -%}
+vlan {{ mgmt.vlan_id }}
+ name MGMT
+!
+{% endif -%}
+{% for v in vlans -%}
+vlan {{ v.id }}
+ name {{ v.name }}
+!
+{% endfor -%}
+! --- Critical-auth VLANs (IBNS 2.0 fallback) ---
+vlan {{ critical_vlans.data.id }}
+ name {{ critical_vlans.data.name }}
+!
+vlan {{ critical_vlans.voice.id }}
+ name {{ critical_vlans.voice.name }}
+!

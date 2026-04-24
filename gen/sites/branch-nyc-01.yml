@@ -1,0 +1,74 @@
+# =======================================================================
+# Site data: BRANCH-NYC-01
+#
+# One YAML file per site. The Python driver reads this, the Jinja
+# templates format it into a pasteable switch config.
+# =======================================================================
+
+hostname: BRANCH-NYC-01
+site_code: NYC01
+location: "New York - 350 5th Ave, 14th Floor"
+
+# Management (VLAN + SVI the switch itself uses)
+mgmt:
+  vlan_id: 10
+  ip: 172.22.10.5
+  mask: 255.255.255.0
+  gateway: 172.22.10.1
+
+# Access / user-facing VLANs. Each becomes a vlan stanza + SVI.
+# svi_ip is the distribution-side gateway; the access switch doesn't
+# own the SVI itself, but we emit L2 VLAN definitions here.
+vlans:
+  - id: 100
+    name: EMPLOYEES
+    svi_ip: 172.22.100.1
+    svi_mask: 255.255.255.0
+  - id: 200
+    name: VOICE
+    svi_ip: 172.22.200.1
+    svi_mask: 255.255.255.0
+  - id: 300
+    name: IOT
+    svi_ip: 172.22.30.1
+    svi_mask: 255.255.255.0
+  - id: 350
+    name: PRINTERS
+    svi_ip: 172.22.35.1
+    svi_mask: 255.255.255.0
+  - id: 400
+    name: CONTRACTOR
+    svi_ip: 172.22.40.1
+    svi_mask: 255.255.255.0
+  - id: 500
+    name: BYOD
+    svi_ip: 172.22.70.1
+    svi_mask: 255.255.255.0
+
+# Critical-auth VLANs used by IBNS 2.0 when ISE is unreachable.
+critical_vlans:
+  data:
+    id: 999
+    name: CRITICAL_DATA
+  voice:
+    id: 998
+    name: CRITICAL_VOICE
+
+# ISE PSN servers for RADIUS.
+radius_servers:
+  - name: ISE-PSN-01
+    ip: 172.22.50.11
+  - name: ISE-PSN-02
+    ip: 172.22.50.12
+
+# Access port range that gets the IBNS 2.0 policy applied.
+access_ports:
+  range: GigabitEthernet1/0/1 - 48
+  data_vlan: 100
+  voice_vlan: 200
+
+# Uplink to distribution. Rendered as a trunk interface.
+uplink:
+  interface: GigabitEthernet1/0/49
+  description: UPLINK-TO-DIST-01
+  allowed_vlans: "10,100,200,300,350,400,500,998,999"

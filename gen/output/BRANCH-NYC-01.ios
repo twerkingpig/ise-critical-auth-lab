@@ -1,0 +1,28 @@
+ are template comments — they do NOT appear in output.
+-#}
+!
+! ================================================================
+! VLAN DATABASE — BRANCH-NYC-01
+! ================================================================
+!vlan 10
+ name MGMT
+!vlan 100
+ name EMPLOYEES
+!vlan 200
+ name VOICE
+!vlan 300
+ name IOT
+!vlan 350
+ name PRINTERS
+!vlan 400
+ name CONTRACTOR
+!vlan 500
+ name BYOD
+!!
+! --- Critical-auth VLANs (IBNS 2.0 fallback) ---
+vlan 999
+ name CRITICAL_DATA
+!
+vlan 998
+ name CRITICAL_VOICE
+!
