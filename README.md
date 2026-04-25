@@ -1,10 +1,12 @@
-# ise-critical-auth-lab 
+# ise-critical-auth-lab
+
+![twerkingpig in the server room](docs/twerkingpig-banner.png)
 
 > Cisco ISE + IBNS 2.0 lab — real switch & ISE configs for critical-auth segmentation and failure-mode testing on Catalyst 9300.
 
 A practical reference lab for building identity-based network access on a Cisco Catalyst 9300 with Cisco ISE 3.x, using IBNS 2.0 policy-maps, critical-auth VLAN fallback, and graceful failure handling when ISE or AD is unavailable.
 
-This repo is built the way a network engineer actually learns: by designing, configuring, breaking, and observing — not by reading.
+This repo is built the way a network engineer actually learns: by designing, configuring, breaking, and observing - not by reading.
 
 ---
 
@@ -17,8 +19,8 @@ Greenfield campus, ~1,500 endpoints spread across six classes:
 | Corp laptops | 700 | Windows, AD-joined, internal-CA certs |
 | Corp VoIP phones | 400 | Cisco IP phones, CDP/LLDP-capable |
 | BYOD phones | 200 | Personal iOS/Android |
-| IoT cameras | 100 | No supplicant — MAB |
-| Printers | 50 | No supplicant — MAB |
+| IoT cameras | 100 | No supplicant - MAB |
+| Printers | 50 | No supplicant - MAB |
 | Contractor laptops | 50 | Not AD-joined, no cert |
 
 Access switches: Catalyst 9300, IOS-XE 17.x.
@@ -86,8 +88,8 @@ ise-critical-auth-lab/
 4. Paste `configs/switch-cat9300-ibns2.ios`.
 5. Apply `configs/switch-cat9300-interface.ios` to an access-port range.
 6. In ISE: add the NAD, create the probe user, build the Policy Set per `docs/03-ise-configuration.md`.
-7. Plug in a test client. Verify with `show access-session interface … details`.
-8. Run `lab/test-plan.md` — especially the ISE-down drill.
+7. Plug in a test client. Verify with `show access-session interface ... details`.
+8. Run `lab/test-plan.md` - especially the ISE-down drill.
 
 ---
 
