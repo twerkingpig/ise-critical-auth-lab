@@ -124,6 +124,8 @@ vlan 30
  name CONTRACTOR
 vlan 35
  name BYOD
+vlan 50
+ name ROUTERS
 vlan 998
  name CRITICAL_VOICE
 vlan 999
@@ -221,6 +223,24 @@ interface range FastEthernet1/1, FastEthernet1/4 - 8
  ip dhcp snooping limit rate 20
  service-policy type control subscriber DOT1X_MAB_POLICY
 !
+!---------------- Trusted infrastructure port (router) ----------------
+! Outside the IBNS 2.0 framework on purpose. Trust is enforced by
+! which switchport the device plugs into. Routers survive ISE outages
+! because they are not in the auth path.
+interface FastEthernet1/12
+ description === Router (trusted infra - no IBNS 2.0) ===
+ switchport mode access
+ switchport access vlan 50
+ switchport nonegotiate
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ storm-control broadcast level pps 1k
+ storm-control multicast level pps 1k
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+!
 !---------------- SVIs ----------------
 interface Vlan1
  description MGMT 192.0.2.2/24
@@ -249,6 +269,10 @@ interface Vlan30
 interface Vlan35
  description BYOD 10.10.35.1/24
  ip address 10.10.35.1 255.255.255.0
+!
+interface Vlan50
+ description ROUTERS 10.10.50.1/24
+ ip address 10.10.50.1 255.255.255.0
 !
 interface Vlan998
  description CRITICAL_VOICE 10.10.198.1/24

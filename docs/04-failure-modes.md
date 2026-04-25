@@ -119,6 +119,32 @@ Every identity-based access design lives or dies by how it fails. This doc enume
 
 ---
 
+## 8. Infrastructure devices bypass auth on purpose
+
+**Trigger:** Anything that affects ISE, RADIUS path, or AD.
+
+**Switch behavior for ports outside the IBNS 2.0 framework:** Nothing. The port is unaffected. Traffic flows.
+
+**User sees:** No impact.
+
+**Why this is a feature, not a bug:** Routers, switches, APs, firewalls, and other infrastructure live on dedicated trusted ports configured *without* the `service-policy type control subscriber DOT1X_MAB_POLICY` line. Trust is enforced by which port the device plugs into, with `port-security` as a guardrail.
+
+**Trade-off:** No ISE visibility for these devices — no Live Logs, no profiling, no CoA. This is acceptable because:
+
+1. Infrastructure devices have stable, well-known identities anyway.
+2. The reliability win is significant: an ISE outage cannot break routing.
+3. Real-world enterprise practice draws this line at the same place: identity-based auth for users and endpoints, port-based trust for infrastructure.
+
+**Revocation model:** Physical. Unplug the cable. There is no software equivalent on these ports, by design.
+
+**Common infrastructure-bypass mistakes:**
+
+- Forgetting `port-security` — then any device on that port gets infrastructure access.
+- Using a global default port template that includes the IBNS 2.0 service-policy — the bypass port has to be explicitly different.
+- Not labeling the port (description / cable label / patch panel sticker) — someone reuses it for a user device months later.
+
+---
+
 ## The general pattern
 
 Every failure mode has three layers:
