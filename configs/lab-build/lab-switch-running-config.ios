@@ -1,0 +1,360 @@
+! =======================================================================
+!  LAB-SWITCH  -  cleaned running-config from real lab build
+! -----------------------------------------------------------------------
+!  Sanitization:
+!     - Real hostname / domain replaced with LAB-* / lab.example.com
+!     - Real IPs swapped for documentation-friendly values (RFC1918 +
+!       TEST-NET-1 / 192.0.2.0/24).
+!
+!  Cleanup vs the dump in docs/06-lab-build.md:
+!     - class-map AAA_SVR_DOWN_*  : 'match result-type aaa-timeout'
+!         changed to 'match result-type aaa-server down' (the documented
+!         IBNS 2.0 trigger that fires when the switch's dead-detection
+!         marks RADIUS dead, not just on a single timeout).
+!     - class-map NOT_IN_CRITICAL_AUTH : was matching every authorized
+!         session. Rewritten as 'match-none ... match activated-service-
+!         template CRITICAL_AUTH_ACCESS' so it is the true inverse of
+!         IN_CRITICAL_AUTH.
+!     - service-template CRITICAL_AUTH_VOICE : removed the data-style
+!         'access-group' and 'vlan' lines and replaced with a proper
+!         voice-side template ('voice vlan 998') so phones get the
+!         voice fallback, not a data VLAN with phone semantics.
+!     - NTP made consistent: the switch now points at the same internal
+!         NTP source as the PSNs, with NA pool servers as fallbacks.
+!     - Stripped trailing whitespace, redundant '!' separators, and
+!         normalized indentation.
+! =======================================================================
+
+no service pad
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname LAB-SWITCH
+!
+boot-start-marker
+boot-end-marker
+!
+no logging console
+!
+!---------------- AAA / RADIUS ----------------
+aaa new-model
+!
+aaa group server radius ISE-GROUP
+ server name ISE-PSN-01
+ server name ISE-PSN-02
+ ip radius source-interface Vlan1
+ deadtime 15
+!
+aaa authentication dot1x default group ISE-GROUP
+aaa authorization network default group ISE-GROUP
+aaa authorization auth-proxy default group ISE-GROUP
+aaa accounting update newinfo periodic 2880
+aaa accounting identity default start-stop group ISE-GROUP
+aaa accounting network default start-stop group ISE-GROUP
+!
+aaa server radius dynamic-author
+ client 192.0.2.244 server-key REPLACE_WITH_KEY1
+ client 192.0.2.245 server-key REPLACE_WITH_KEY2
+ auth-type any
+!
+aaa session-id common
+system mtu routing 1500
+!
+!---------------- DHCP snooping / device tracking ----------------
+ip dhcp snooping vlan 10
+no ip dhcp snooping information option
+ip domain-name lab.example.com
+ip name-server 192.0.2.177
+ip device tracking probe auto-source
+ip device tracking probe delay 10
+!
+vtp domain VTP.LAB
+vtp mode off
+!
+!---------------- Dot1X global ----------------
+authentication critical recovery delay 2000
+dot1x system-auth-control
+dot1x critical eapol
+!
+archive
+ log config
+  logging enable
+  logging size 1000
+  notify syslog contenttype plaintext
+  hidekeys
+!
+!---------------- Service templates ----------------
+service-template DEFAULT_LINKSEC_POLICY_SHOULD_SECURE
+service-template DEFAULT_LINKSEC_POLICY_MUST_SECURE
+service-template DEFAULT_CRITICAL_VOICE_TEMPLATE
+service-template webauth-global-inactive
+ inactivity-timer 3600
+!
+service-template CRITICAL_AUTH_ACCESS
+ description Data-side critical-auth, applied when RADIUS is unreachable
+ access-group ACL-CRITICAL-AUTH
+ vlan 999
+ inactivity-timer 60
+!
+service-template CRITICAL_AUTH_VOICE
+ description Voice-side critical-auth, phones keep working during outage
+ voice vlan 998
+!
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+!
+alarm profile defaultPort
+ alarm not-operating
+ syslog not-operating
+ notifies not-operating
+!
+vlan internal allocation policy ascending
+!
+!---------------- VLANs ----------------
+vlan 10
+ name EMPLOYEES
+vlan 15
+ name VOICE
+vlan 20
+ name IOT
+vlan 25
+ name PRINTERS
+vlan 30
+ name CONTRACTOR
+vlan 35
+ name BYOD
+vlan 998
+ name CRITICAL_VOICE
+vlan 999
+ name CRITICAL_DATA
+!
+lldp run
+!
+!---------------- Class-maps ----------------
+class-map type control subscriber match-all AAA_SVR_DOWN_AUTHD_HOST
+ match result-type aaa-server down
+ match authorization-status authorized
+!
+class-map type control subscriber match-all AAA_SVR_DOWN_UNAUTHD_HOST
+ match result-type aaa-server down
+ match authorization-status unauthorized
+!
+class-map type control subscriber match-all DOT1X
+ match method dot1x
+!
+class-map type control subscriber match-all DOT1X_FAILED
+ match method dot1x
+ match result-type method dot1x authoritative
+!
+class-map type control subscriber match-all DOT1X_NO_RESP
+ match method dot1x
+ match result-type method dot1x agent-not-found
+!
+class-map type control subscriber match-all MAB
+ match method mab
+!
+class-map type control subscriber match-all MAB_FAILED
+ match method mab
+ match result-type method mab authoritative
+!
+class-map type control subscriber match-all IN_CRITICAL_AUTH
+ match activated-service-template CRITICAL_AUTH_ACCESS
+!
+class-map type control subscriber match-none NOT_IN_CRITICAL_AUTH
+ match activated-service-template CRITICAL_AUTH_ACCESS
+!
+!---------------- IBNS 2.0 policy ----------------
+policy-map type control subscriber DOT1X_MAB_POLICY
+ event session-started match-all
+  10 class always do-until-failure
+   10 authenticate using dot1x priority 10
+ event authentication-failure match-first
+  10 class AAA_SVR_DOWN_UNAUTHD_HOST do-until-failure
+   10 activate service-template CRITICAL_AUTH_ACCESS
+   20 activate service-template CRITICAL_AUTH_VOICE
+   30 authorize
+   40 pause reauthentication
+  20 class AAA_SVR_DOWN_AUTHD_HOST do-until-failure
+   10 pause reauthentication
+   20 authorize
+  30 class DOT1X_FAILED do-until-failure
+   10 terminate dot1x
+   20 authenticate using mab priority 20
+  40 class DOT1X_NO_RESP do-until-failure
+   10 terminate dot1x
+   20 authenticate using mab priority 20
+  50 class MAB_FAILED do-until-failure
+   10 terminate mab
+   20 authentication-restart 60
+ event aaa-available match-all
+  10 class IN_CRITICAL_AUTH do-until-failure
+   10 clear-session
+  20 class NOT_IN_CRITICAL_AUTH do-until-failure
+   10 resume reauthentication
+ event agent-found match-all
+  10 class always do-until-failure
+   10 terminate mab
+   20 authenticate using dot1x priority 10
+ event violation match-all
+  10 class always do-all
+   10 restrict
+!
+!---------------- Access ports ----------------
+interface range FastEthernet1/1, FastEthernet1/4 - 8
+ description === User Access ===
+ switchport mode access
+ switchport access vlan 10
+ switchport voice vlan 15
+ switchport nonegotiate
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ storm-control broadcast level pps 1k
+ storm-control multicast level pps 1k
+ access-session closed
+ access-session port-control auto
+ mab
+ dot1x pae authenticator
+ dot1x timeout tx-period 7
+ authentication periodic
+ authentication timer reauthenticate server
+ ip dhcp snooping limit rate 20
+ service-policy type control subscriber DOT1X_MAB_POLICY
+!
+!---------------- SVIs ----------------
+interface Vlan1
+ description MGMT 192.0.2.2/24
+ ip address 192.0.2.2 255.255.255.0
+!
+interface Vlan10
+ description EMPLOYEES 10.10.10.1/24
+ ip address 10.10.10.1 255.255.255.0
+!
+interface Vlan15
+ description VOICE 10.10.15.1/24
+ ip address 10.10.15.1 255.255.255.0
+!
+interface Vlan20
+ description IOT 10.10.20.1/24
+ ip address 10.10.20.1 255.255.255.0
+!
+interface Vlan25
+ description PRINTERS 10.10.25.1/24
+ ip address 10.10.25.1 255.255.255.0
+!
+interface Vlan30
+ description CONTRACTOR 10.10.30.1/24
+ ip address 10.10.30.1 255.255.255.0
+!
+interface Vlan35
+ description BYOD 10.10.35.1/24
+ ip address 10.10.35.1 255.255.255.0
+!
+interface Vlan998
+ description CRITICAL_VOICE 10.10.198.1/24
+ ip address 10.10.198.1 255.255.255.0
+!
+interface Vlan999
+ description CRITICAL_DATA 10.10.199.1/24
+ ip address 10.10.199.1 255.255.255.0
+!
+!---------------- HTTP / SSH ----------------
+ip http server
+ip http secure-server
+ip http active-session-modules none
+ip http secure-active-session-modules none
+ip ssh version 2
+!
+!---------------- ACLs ----------------
+ip access-list extended ACL-CONTRACTOR
+ remark --- Basic network services ---
+ permit udp any any eq bootps
+ permit udp any any eq domain
+ permit udp any eq domain any
+ remark --- Two internal apps that contractors need ---
+ permit tcp any host 10.10.10.254 eq 443
+ permit tcp any host 10.10.10.253 eq 443
+ remark --- Block all access to internal user / infra subnets ---
+ deny   ip any 10.10.0.0 0.0.255.255 log-input
+ remark --- Everything else = internet ---
+ permit ip any any
+!
+ip access-list extended ACL-CRITICAL-AUTH
+ remark --- Allow essential infra while ISE is down ---
+ permit udp any any eq bootps
+ permit udp any any eq bootpc
+ permit udp any any eq domain
+ permit udp any eq domain any
+ permit icmp any any
+ remark --- Internal help portal (tells user about the outage) ---
+ permit tcp any host 10.10.10.254 eq www
+ permit tcp any host 10.10.10.253 eq 443
+ remark --- Default deny with logging for post-mortem ---
+ deny   ip any any log-input
+!
+ip access-list extended ACL-OPEN
+ permit ip any any
+!
+ip access-list extended ACL-REDIRECT
+ remark --- Allow direct access to ISE PSN ports ---
+ permit tcp any host 192.0.2.244 eq 8443
+ permit tcp any host 192.0.2.244 eq 443
+ permit tcp any host 192.0.2.244 eq 8905
+ permit tcp any host 192.0.2.245 eq 8443
+ permit tcp any host 192.0.2.245 eq 443
+ permit tcp any host 192.0.2.245 eq 8905
+ deny   ip any any
+!
+ip access-list extended ACL-WEBAUTH-REDIRECT
+ remark --- Do NOT redirect infra traffic ---
+ deny   udp any any eq domain
+ deny   udp any any eq bootps
+ remark --- Do NOT redirect traffic to ISE itself ---
+ deny   ip any host 192.0.2.244
+ deny   ip any host 192.0.2.245
+ remark --- Redirect HTTP/HTTPS everywhere else ---
+ permit tcp any any eq www
+ permit tcp any any eq 443
+!
+!---------------- RADIUS server attributes ----------------
+radius-server attribute 6 on-for-login-auth
+radius-server attribute 8 include-in-access-req
+radius-server attribute 25 access-request include
+radius-server attribute 31 mac format ietf upper-case
+radius-server attribute 31 send nas-port-detail mac-only
+radius-server dead-criteria time 5 tries 3
+radius-server deadtime 15
+!
+radius server ISE-PSN-01
+ address ipv4 192.0.2.244 auth-port 1812 acct-port 1813
+ timeout 5
+ retransmit 2
+ automate-tester username ise-probe probe-on
+ key REPLACE_WITH_KEY1
+!
+radius server ISE-PSN-02
+ address ipv4 192.0.2.245 auth-port 1812 acct-port 1813
+ timeout 5
+ retransmit 2
+ automate-tester username ise-probe probe-on
+ key REPLACE_WITH_KEY2
+!
+!---------------- Lines ----------------
+line con 0
+ logging synchronous
+line vty 0 4
+ logging synchronous
+ transport input ssh
+ transport output ssh
+line vty 5 15
+ transport input ssh
+!
+!---------------- NTP ----------------
+ntp source Vlan1
+ntp server 192.0.2.177 prefer
+ntp server 0.north-america.pool.ntp.org
+ntp server 1.north-america.pool.ntp.org
+ntp server 2.north-america.pool.ntp.org
+ntp server 3.north-america.pool.ntp.org
+!
+end

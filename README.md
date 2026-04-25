@@ -55,11 +55,15 @@ ise-critical-auth-lab/
 │   ├── 02-ibns2-policy-explained.md   # Policy-map walkthrough
 │   ├── 03-ise-configuration.md        # NAD, probe user, profiles, policy set
 │   ├── 04-failure-modes.md            # AD-down, ISE-down, MAC spoofing, graceful degradation
-│   └── 05-byod-redirect.md            # The three RADIUS attributes, and the gotchas
+│   ├── 05-byod-redirect.md            # The three RADIUS attributes, and the gotchas
+│   ├── 06-lab-build.md                # Real lab build: PSN configs + cleaned switch config
+│   └── screenshots/                   # ISE admin UI captures
 ├── configs/
-│   ├── switch-cat9300-base.ios        # AAA + RADIUS + server tracking
-│   ├── switch-cat9300-ibns2.ios       # Policy-map + service-templates
-│   ├── switch-cat9300-interface.ios   # Access port config
+│   ├── switch-cat9300-base.ios        # Reference: AAA + RADIUS + server tracking
+│   ├── switch-cat9300-ibns2.ios       # Reference: policy-map + service-templates
+│   ├── switch-cat9300-interface.ios   # Reference: access port config
+│   ├── lab-build/
+│   │   └── lab-switch-running-config.ios  # Real lab switch, sanitized & cleaned
 │   └── acls/
 │       ├── acl-critical-auth.ios
 │       ├── acl-webauth-redirect.ios

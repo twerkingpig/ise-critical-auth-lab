@@ -54,6 +54,12 @@ class-map type control subscriber match-all MAB_FAILED
  match method mab
  match result-type method mab authoritative
 
+class-map type control subscriber match-all IN_CRITICAL_AUTH
+ match activated-service-template CRITICAL_AUTH_ACCESS
+
+class-map type control subscriber match-none NOT_IN_CRITICAL_AUTH
+ match activated-service-template CRITICAL_AUTH_ACCESS
+
 !---------------- Service templates ----------------
 service-template CRITICAL_AUTH_ACCESS
  description Data-side critical-auth: applied when RADIUS is unreachable
@@ -62,7 +68,7 @@ service-template CRITICAL_AUTH_ACCESS
  inactivity-timer 60
 
 service-template CRITICAL_AUTH_VOICE
- description Voice-side critical-auth: phones keep working during outage
+ description Voice-side critical-auth - phones keep working during outage
  voice vlan 998
 
 !---------------- The policy-map ----------------
