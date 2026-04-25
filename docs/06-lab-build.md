@@ -54,6 +54,7 @@ VLANs in use:
 | 25 | PRINTERS | 10.10.25.1/24 |
 | 30 | CONTRACTOR | 10.10.30.1/24 |
 | 35 | BYOD | 10.10.35.1/24 |
+| 50 | ROUTERS | 10.10.50.1/24 |
 | 998 | CRITICAL_VOICE | 10.10.198.1/24 |
 | 999 | CRITICAL_DATA | 10.10.199.1/24 |
 
@@ -242,6 +243,34 @@ interface range FastEthernet1/1, FastEthernet1/4 - 8
 ```
 
 `access-session closed` puts these ports in Closed Mode. Production-ish.
+
+### Trusted infrastructure port — Routers segment
+
+Routers and other infrastructure devices live on a port that is **outside the IBNS 2.0 framework on purpose**:
+
+```cisco
+interface FastEthernet1/12
+ description === Router (trusted infra - no IBNS 2.0) ===
+ switchport mode access
+ switchport access vlan 50
+ switchport nonegotiate
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ storm-control broadcast level pps 1k
+ storm-control multicast level pps 1k
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+```
+
+Design rationale:
+
+- **Why not auth a router?** Routers, switches, APs, and firewalls are infrastructure. In real enterprise practice, trust is enforced by *which switchport* the cable goes into, not by ISE policy. This is faster, simpler, and survives any ISE / AD outage because the device is not in the auth path.
+- **Why port-security?** Belt and suspenders. If someone unplugs the router and plugs in a laptop, the new MAC trips the violation and the port goes into restrict mode (drops unknown source frames, logs to syslog). Without port-security, the laptop would silently land in VLAN 50 with full router-tier access.
+- **Trade-off:** No ISE Live Logs for this device. No profiling, no CoA. We accept that in exchange for absolute reliability and operational simplicity.
+
+If you ever need to revoke a router's access, the operation is physical: unplug the cable. There is no software equivalent on this port — by design.
 
 ---
 

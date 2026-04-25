@@ -42,6 +42,7 @@ Licensing: TrustSec available (SGTs considered, not used in this iteration).
 4. **Identity sources must degrade.** AD-down cannot mean campus-down. Identity Source Sequences with `proceed on process fail` matter.
 5. **Monitor → Low-Impact → Closed.** Never go straight to closed mode in production.
 6. **Probes that fail are safer than probes that succeed.** The switch only needs a RADIUS *response* to mark a server alive.
+7. **Identity auth for users and endpoints, port-based trust for infrastructure.** Routers, switches, APs, and firewalls live on dedicated ports outside the IBNS 2.0 framework. Trust is enforced by which port the cable is in, with `port-security` as a guardrail. See VLAN 50 (`ROUTERS`) and `docs/04-failure-modes.md` §8.
 
 ---
 
