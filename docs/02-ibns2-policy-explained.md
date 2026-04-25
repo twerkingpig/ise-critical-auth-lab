@@ -34,8 +34,8 @@ Other class-maps we use:
 | `DOT1X_FAILED` | Dot1X ran and gave an authoritative failure |
 | `DOT1X_NO_RESP` | No EAPoL from the endpoint (no supplicant) |
 | `MAB_FAILED` | MAB ran and failed |
-| `IN_CRITICAL_AUTH` | Built-in, matches sessions currently in critical-auth state |
-| `NOT_IN_CRITICAL_AUTH` | Built-in, the opposite |
+| `IN_CRITICAL_AUTH` | Matches sessions currently in critical-auth state. Some IOS-XE versions ship a built-in version, but declare it yourself for portability — see config. |
+| `NOT_IN_CRITICAL_AUTH` | The true logical opposite of `IN_CRITICAL_AUTH`, declared with `match-none` + the same inner condition. |
 
 ### Service templates (what to apply)
 

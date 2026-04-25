@@ -306,22 +306,80 @@ Original switch pointed at `pool.ntp.org` directly while the PSNs pointed at `19
 
 ## ISE screenshots
 
-Captured from the lab ISE admin UI. Filenames are placeholders — feel free to rename them to match the area they show (e.g. `02-network-devices.png`, `03-policy-set.png`, `04-authz-profile-employee.png`).
+Captured from the lab ISE admin UI, in the order an engineer typically navigates through the policy build.
 
-![ISE overview](screenshots/01-ise-overview.png)
-![ISE screenshot](screenshots/02.png)
-![ISE screenshot](screenshots/03.png)
-![ISE screenshot](screenshots/04.png)
-![ISE screenshot](screenshots/05.png)
-![ISE screenshot](screenshots/06.png)
-![ISE screenshot](screenshots/07.png)
-![ISE screenshot](screenshots/08.png)
-![ISE screenshot](screenshots/09.png)
+### Policy Sets overview
+
+`Policy > Policy Sets`
+
+![Policy sets overview](screenshots/01-policy-sets-overview.png)
+
+Two policy sets configured: `CAMPUS-WIRED-DOT1X` keyed on `Device Type EQUALS Access-Switch` AND `Radius Service-Type EQUALS Framed`, plus the catch-all `Default` policy set. Both use the `Default Network Access` allowed protocols.
+
+### Authentication policy
+
+`Policy > Policy Sets > CAMPUS-WIRED-DOT1X > Authentication Policy`
+
+![Authentication policy](screenshots/02-authentication-policy-mab-dot1x.png)
+
+MAB rule matches the `Wired_MAB` condition and uses the Internal Endpoints store; Dot1X rule matches `Wired_802.1X` and uses the `CORP_ISS` identity source sequence so AD outages can fall back to LDAP / Internal Users (see `docs/04-failure-modes.md`).
+
+### Authorization policy — corp rules
+
+`Policy > Policy Sets > CAMPUS-WIRED-DOT1X > Authorization Policy`
+
+![Authorization policy: corp rules](screenshots/03-authorization-policy-corp-rules.png)
+
+Top-of-list rules: `DENY-PROBE` (catches the liveness probe user), `CORP-LAPTOPS` (cert issuer + AD `Domain Computers` group + Windows-Workstation profile — the compound condition pattern), `CORP-LAPTOPS-AD-DOWN` (cert-only fallback when AD is unreachable), and `CORP-VOICE-PHONES` (Cisco IP phone profile).
+
+### Authorization policy — IoT, contractor, BYOD rules
+
+![Authorization policy: IoT/BYOD rules](screenshots/04-authorization-policy-iot-byod-rules.png)
+
+Next block of rules: `IOT-CAMERAS` and `PRINTERS` (both gated on `Service-Type EQUALS Call-Check` so they only match MAB-authenticated endpoints), `CONTRACTORS` (AD group), and the two BYOD rules — `BYOD-ENROLLED` for already-registered devices and `BYOD-REDIRECT` for new ones.
+
+### Authorization policy — default rule
+
+![Authorization policy: default DenyAccess](screenshots/05-authorization-policy-default-rule.png)
+
+Default rule is `DenyAccess` — fail-closed catch-all. Anything that doesn't match an explicit rule above is denied.
+
+### Authorization profiles
+
+`Policy > Policy Elements > Results > Authorization > Authorization Profiles`
+
+![Authorization profiles list](screenshots/06-authorization-profiles-list.png)
+
+The catalog of authz profiles referenced by the rules above: `BYOD-ACCESS`, `BYOD-REDIRECT`, `CONTRACTOR-LIMITED`, `CRITICAL-AUTH-RETURN`, `EMPLOYEE-FULL-ACCESS`, `EMPLOYEE-LIMITED-ACCESS`, `IOT-CAMERAS`, plus a few extras for wireless. Each one bundles VLAN + dACL + reauth timer.
+
+### Downloadable ACLs
+
+`Policy > Policy Elements > Results > Authorization > Downloadable ACLs`
+
+![Downloadable ACLs list](screenshots/07-downloadable-acls-list.png)
+
+The dACLs that ride along with the authz profiles: `ACL-BYOD-REDIRECT-LIMITED`, `ACL-CONTRACTOR-INTERNET-ONLY`, `ACL-CRITICAL-AUTH`, `ACL-IOT-LIMITED`, `ACL-PRINTER`, plus the default permit/deny IP rules ISE ships with.
+
+### Active Directory join point
+
+`Administration > Identity Management > External Identity Sources > Active Directory > lab.example.com`
+
+![AD join point](screenshots/08-ad-join-point-connection.png)
+
+Both PSNs joined and Operational against the lab AD. Health here is the foundation of the AD-backed authorization rules; if this status drops, rule 2 fails and rule 3 (`CORP-LAPTOPS-AD-DOWN`) is what saves you.
+
+### Network Access Users — the probe user
+
+`Administration > Identity Management > Identities > Users`
+
+![Network access users](screenshots/09-network-access-users-ise-probe.png)
+
+The `ise-probe` internal user used by the switch's `automate-tester` for RADIUS liveness checks. Marked "DO NOT ASSIGN ACCESS" — it is intentionally rejected by every authz rule (the explicit `DENY-PROBE` rule at the top, and the default `DenyAccess` rule at the bottom).
 
 ---
 
 ## Things to add later
 
-- Captioned screenshot rename so each image gets a meaningful name and section.
 - A short "test results" file (`lab/results-<date>.md`) walking through `lab/test-plan.md` against this real build.
 - An ISE backup export (sanitized) so the policy set is reproducible.
+- Add the `EMPLOYEE-LIMITED-ACCESS` and `CRITICAL-AUTH-RETURN` profile definitions to `docs/03-ise-configuration.md` so the design doc fully tracks what the lab actually has.
