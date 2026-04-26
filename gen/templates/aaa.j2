@@ -1,0 +1,74 @@
+{#
+  aaa.j2 - AAA + RADIUS server config
+
+  Expects in context:
+    hostname  : str
+    aaa       : dict with:
+                  probe_username   (required)
+                  source_interface (required)
+                  radius_servers   (list of dicts with: name, ip,
+                                    optional retransmit (default 2),
+                                    optional timeout    (default 5))
+
+  Convention: shared secrets are emitted as REPLACE_WITH_KEY_FOR_<name>
+  placeholders. The operator fills them in by hand before paste.
+
+  Loop pattern (the hard-won lesson):
+    {% for x in xs %}     opens the loop
+     body line(s) here    kept verbatim (Cisco IOS submode indents)
+    {% endfor %}          closes the loop
+
+  Do NOT use '-%}' on the closing tag. The minus eats whitespace AFTER
+  the tag - including the next line's leading spaces - which destroys
+  IOS submode indentation. trim_blocks=True alone takes care of the
+  newline immediately following the {% endfor %} tag.
+#}
+!
+! ================================================================
+! AAA / RADIUS - {{ hostname }}
+! ================================================================
+!
+aaa new-model
+aaa session-id common
+!
+{% for s in aaa.radius_servers %}
+radius server {{ s.name }}
+ address ipv4 {{ s.ip }} auth-port 1812 acct-port 1813
+ key 7 REPLACE_WITH_KEY_FOR_{{ s.name }}
+ automate-tester username {{ aaa.probe_username }} probe-on
+ retransmit {{ s.retransmit | default(2) }}
+ timeout {{ s.timeout | default(5) }}
+!
+{% endfor %}
+aaa group server radius ISE-GROUP
+{% for s in aaa.radius_servers %}
+ server name {{ s.name }}
+{% endfor %}
+ deadtime 15
+ ip radius source-interface {{ aaa.source_interface }}
+!
+radius-server dead-criteria time 5 tries 3
+radius-server deadtime 15
+radius-server attribute 6 on-for-login-auth
+radius-server attribute 8 include-in-access-req
+radius-server attribute 25 access-request include
+radius-server attribute 31 mac format ietf upper-case
+radius-server attribute 31 send nas-port-detail mac-only
+!
+aaa authentication dot1x default group ISE-GROUP
+aaa authorization network default group ISE-GROUP
+aaa authorization auth-proxy default group ISE-GROUP
+aaa accounting dot1x default start-stop group ISE-GROUP
+aaa accounting update newinfo periodic 2880
+aaa accounting identity default start-stop group ISE-GROUP
+aaa accounting network default start-stop group ISE-GROUP
+!
+aaa server radius dynamic-author
+{% for s in aaa.radius_servers %}
+ client {{ s.ip }} server-key 7 REPLACE_WITH_KEY_FOR_{{ s.name }}
+{% endfor %}
+ auth-type any
+!
+dot1x system-auth-control
+dot1x critical eapol
+!

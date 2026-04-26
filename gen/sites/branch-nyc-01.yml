@@ -54,12 +54,28 @@ critical_vlans:
     id: 998
     name: CRITICAL_VOICE
 
-# ISE PSN servers for RADIUS.
-radius_servers:
-  - name: ISE-PSN-01
-    ip: 172.22.50.11
-  - name: ISE-PSN-02
-    ip: 172.22.50.12
+# AAA / RADIUS
+#
+# Shared secrets are NOT stored here. The template emits
+# REPLACE_WITH_KEY_FOR_<server-name> as a placeholder; the operator fills
+# them in by hand from a password vault before pasting to the switch.
+aaa:
+  # The probe user the switch impersonates against ISE for liveness
+  # detection. Must exist in ISE's Internal Users with no authz match
+  # (default-deny is fine).
+  probe_username: ise-probe
+
+  # Which interface RADIUS packets source from. Usually the mgmt SVI.
+  # Defaults to the mgmt VLAN if unset.
+  source_interface: Vlan10
+
+  # ISE PSN servers.
+  # Optional per-server overrides: retransmit, timeout (defaults 2 / 5).
+  radius_servers:
+    - name: ISE-PSN-01
+      ip: 172.22.50.11
+    - name: ISE-PSN-02
+      ip: 172.22.50.12
 
 # Access port range that gets the IBNS 2.0 policy applied.
 access_ports:

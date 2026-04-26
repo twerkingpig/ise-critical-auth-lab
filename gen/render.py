@@ -43,11 +43,19 @@ def load_site(yaml_path: Path) -> dict:
 
 def build_env() -> Environment:
     """Create a Jinja2 environment with sensible defaults."""
+    # Whitespace policy:
+    #   trim_blocks=True   - strip the newline right after a block tag,
+    #                        so '{% for %}\n' does not produce a blank line.
+    #   lstrip_blocks=False - DO NOT strip leading whitespace before block tags.
+    #                         lstrip_blocks=True is hostile to Cisco IOS submode
+    #                         indentation: combined with '-%}' it eats leading
+    #                         spaces from the next line, which destroys ' server
+    #                         name ...' style submode indents inside loops.
     return Environment(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
         undefined=StrictUndefined,     # crash on missing vars
-        trim_blocks=True,               # strip newline after {% ... %}
-        lstrip_blocks=True,             # strip leading whitespace before {% ... %}
+        trim_blocks=True,
+        lstrip_blocks=False,
         keep_trailing_newline=True,
     )
 
