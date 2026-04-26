@@ -77,6 +77,16 @@ aaa:
     - name: ISE-PSN-02
       ip: 172.22.50.12
 
+  # Optional TACACS+ servers (e.g. for switch admin AAA against ISE).
+  # Omit the entire 'tacacs' key if you don't use TACACS+ at this site.
+  tacacs:
+    group_name: TACACS-GROUP
+    servers:
+      - name: TAC-01
+        ip: 172.22.50.30
+      - name: TAC-02
+        ip: 172.22.50.31
+
 # Access port range that gets the IBNS 2.0 policy applied.
 access_ports:
   range: GigabitEthernet1/0/1 - 48

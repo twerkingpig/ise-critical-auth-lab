@@ -69,6 +69,27 @@ aaa server radius dynamic-author
 {% endfor %}
  auth-type any
 !
+{#
+  TACACS+ block: emitted only if 'aaa.tacacs' is defined in the YAML.
+  - 'is defined' returns False (cleanly) when the key is missing,
+    even with StrictUndefined. That's why we use it instead of a
+    truthy check like '{% if aaa.tacacs %}', which would crash on
+    a missing key under StrictUndefined.
+  - Same loop pattern as RADIUS: bare {% for %} ... {% endfor %},
+    no '-%}' on close, body lines kept verbatim with leading spaces.
+#}
+{% if aaa.tacacs is defined %}
+{% for s in aaa.tacacs.servers %}
+tacacs server {{ s.name }}
+ address ipv4 {{ s.ip }}
+ key 7 REPLACE_WITH_KEY_FOR_{{ s.name }}
+!
+{% endfor %}
+aaa group server tacacs+ {{ aaa.tacacs.group_name }}
+{% for s in aaa.tacacs.servers %}
+ server name {{ s.name }}
+{% endfor %}!
+{% endif %}
 dot1x system-auth-control
 dot1x critical eapol
 !
